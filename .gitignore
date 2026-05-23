@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Large/local datasets
+data/*.npy
+
+# Generated outputs
+fuzzy_rules_output/
+matlab_fis_output/
+matlab_preprocessed_features/
+*.png
+*.mat
+
