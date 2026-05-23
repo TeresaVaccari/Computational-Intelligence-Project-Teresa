@@ -1,68 +1,65 @@
+function fis = wmh_fis_rules(showPlots)
 %% WMH Fuzzy Inference System
 % FIS written with the same MATLAB style used in ex2.m:
 % mamfis -> addInput -> addMF -> addOutput -> addRule.
 %
-% All input features are assumed to be normalized in [0, 1].
+% All input features are normalized in [0, 1].
 
-clc
-close all
-clear all
 
-fis = mamfis('Name', 'WMH_FIS');
+fis = mamfis('Name', 'WMH_FIS'); % create a Mamdani FIS named 'WMH_FIS'
 
-%% Inputs
-% 1) Pixel intensity from the FLAIR image.
+%% inputs
+% 1. Pixel intensity from the FLAIR image.
 fis = addInput(fis, [0 1], 'Name', 'intensity');
 fis = addMF(fis, 'intensity', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'intensity', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'intensity', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 2) Local mean feature, already computed with a sliding window.
+% 2. Local mean feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'local_mean');
 fis = addMF(fis, 'local_mean', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'local_mean', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'local_mean', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 3) Local standard deviation feature, already computed with a sliding window.
+% 3.  Local standard deviation feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'local_std');
 fis = addMF(fis, 'local_std', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'local_std', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'local_std', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 4) Skewness feature, already computed with a sliding window.
+% 4. Skewness feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'skewness');
 fis = addMF(fis, 'skewness', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'skewness', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'skewness', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 5) Kurtosis feature, already computed with a sliding window.
+% 5. Kurtosis feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'kurtosis');
 fis = addMF(fis, 'kurtosis', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'kurtosis', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'kurtosis', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 6) Local contrast: intensity - local_mean.
+% 6. Local contrast: intensity - local_mean.
 fis = addInput(fis, [0 1], 'Name', 'local_contrast');
 fis = addMF(fis, 'local_contrast', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'local_contrast', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'local_contrast', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-% 7) Local range: max(window) - min(window), computed with a 5x5 window.
+% 7. Local range: max(window) - min(window), computed with a 5x5 window.
 fis = addInput(fis, [0 1], 'Name', 'local_range');
 fis = addMF(fis, 'local_range', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
 fis = addMF(fis, 'local_range', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
 fis = addMF(fis, 'local_range', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
 
-%% Output
-% Output is the degree of belonging to the WMH class.
+%% output is the degree of belonging to the WMH class
 fis = addOutput(fis, [0 1], 'Name', 'WMH');
 fis = addMF(fis, 'WMH', 'trimf', [0 0 0.40], 'Name', 'non_wmh');
 fis = addMF(fis, 'WMH', 'trimf', [0.60 1 1], 'Name', 'wmh');
 
 %% Rules
-% Rule format:
-% [intensity mean std skew kurtosis contrast range output weight operator]
-%
+% Rule format: 
+%[intensity mean std skew kurtosis contrast range output weight operator]
+
 % 0 = don't care
 % Input MF indexes:
 %   low = 1, medium = 2, high = 3
@@ -88,21 +85,18 @@ ruleList = [
 
 fis = addRule(fis, ruleList);
 
-%% Optional visualization
-figure('Name', 'Intensity MFs')
-plotmf(fis, 'input', 1, 1000);
-title('Pixel Intensity Membership Functions')
+% visualization
+if showPlots
+    figure('Name', 'Intensity MFs')
+    plotmf(fis, 'input', 1, 1000);
+    title('Pixel Intensity Membership Functions')
 
-figure('Name', 'Local Range MFs')
-plotmf(fis, 'input', 7, 1000);
-title('Local Range Membership Functions')
+    figure('Name', 'Local Range MFs')
+    plotmf(fis, 'input', 7, 1000);
+    title('Local Range Membership Functions')
 
-figure('Name', 'WMH Output MFs')
-plotmf(fis, 'output', 1, 1000);
-title('WMH Output Membership Functions')
+    figure('Name', 'WMH Output MFs')
+    plotmf(fis, 'output', 1, 1000);
+    title('WMH Output Membership Functions')
 
-% Example evaluation with normalized feature values:
-% [intensity mean std skew kurtosis contrast range]
-exampleInput = [0.85 0.80 0.60 0.70 0.65 0.75 0.70];
-output = evalfis(fis, exampleInput);
-fprintf('\nExample WMH score: %.3f\n', output);
+end
