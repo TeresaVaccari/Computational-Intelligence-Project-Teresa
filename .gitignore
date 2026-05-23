@@ -11,7 +11,9 @@ data/*.npy
 # Generated outputs
 fuzzy_rules_output/
 matlab_fis_output/
-matlab_preprocessed_features/
 *.png
 *.mat
 
+# Keep exported preprocessing features for MATLAB
+!matlab_preprocessed_features/
+!matlab_preprocessed_features/preprocessed_features_slice_31.mat
