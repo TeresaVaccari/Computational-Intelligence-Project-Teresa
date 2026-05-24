@@ -40,7 +40,7 @@ def main():
 
     output_dir = PROJECT_ROOT / "matlab_preprocessed_features"
     output_dir.mkdir(exist_ok=True)
-    output_path = output_dir / f"preprocessed_features_slice_{slice_idx}.mat"
+    output_path = output_dir / f"preprocessed_features_slice_{slice_idx + 1}.mat"
 
     savemat(
         output_path,

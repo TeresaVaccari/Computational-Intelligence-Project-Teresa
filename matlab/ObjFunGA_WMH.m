@@ -11,13 +11,18 @@
 
 
 
-function error = ObjFunGA_WMH(ruleWeights, fis, featureMatrices, manualMasks, imageShapes, threshold)
+function error = ObjFunGA_WMH(chromosome, fis, featureMatrices, manualMasks, imageShapes, threshold)
 
-% input: ruleWeights array of weights for the fuzzy rules, values between 0 and 1
+% input: chromosome array of fuzzy rule weights, plus optionally a threshold
 % fis fuzzy inference system, created by wmh_fis_rules.m
 % featureMatrices cell array of preprocessed feature matrices for each slice (pixel number x feature number)
 % manualMasks are the true masks 
 % imageShapes reconstruct the score from feature space to image space
+
+ruleWeights = chromosome(1:numel(fis.Rules));
+if numel(chromosome) > numel(fis.Rules)
+    threshold = chromosome(end);
+end
 
 fisWeighted = set_rule_weights(fis, ruleWeights); % applies the weights to the fuzzy rules
 diceValues = zeros(1, numel(featureMatrices)); % tries all slices
@@ -30,7 +35,7 @@ for i = 1:numel(featureMatrices) % create vector to save Dice of each slice
     score = evalfis(fisWeighted, featureMatrices{i}); 
     
     % apply threshold to get binary prediction, reshape to image space
-    prediction = reshape(score >= threshold, imageShapes{i}(1), imageShapes{i}(2));
+    prediction = vector_to_image(score >= threshold, imageShapes{i});
     
     % compare with true mask
     target = manualMasks{i};
@@ -63,4 +68,9 @@ if denom == 0
 else
     dice = 2 * intersection / denom;
 end
+end
+
+
+function image = vector_to_image(vector, imageShape)
+image = reshape(vector, imageShape(2), imageShape(1))';
 end

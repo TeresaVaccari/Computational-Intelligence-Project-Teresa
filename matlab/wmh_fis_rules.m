@@ -12,14 +12,14 @@ fis = mamfis('Name', 'WMH_FIS'); % create a Mamdani FIS named 'WMH_FIS'
 % 1. Pixel intensity from the FLAIR image.
 fis = addInput(fis, [0 1], 'Name', 'intensity');
 fis = addMF(fis, 'intensity', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
-fis = addMF(fis, 'intensity', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
-fis = addMF(fis, 'intensity', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
+fis = addMF(fis, 'intensity', 'trimf', [0.35 0.55 0.72], 'Name', 'medium');
+fis = addMF(fis, 'intensity', 'trapmf', [0.62 0.72 1 1], 'Name', 'high');
 
 % 2. Local mean feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'local_mean');
 fis = addMF(fis, 'local_mean', 'trapmf', [0 0 0.20 0.45], 'Name', 'low');
-fis = addMF(fis, 'local_mean', 'trimf', [0.25 0.50 0.75], 'Name', 'medium');
-fis = addMF(fis, 'local_mean', 'trapmf', [0.55 0.75 1 1], 'Name', 'high');
+fis = addMF(fis, 'local_mean', 'trimf', [0.35 0.55 0.72], 'Name', 'medium');
+fis = addMF(fis, 'local_mean', 'trapmf', [0.62 0.72 1 1], 'Name', 'high');
 
 % 3.  Local standard deviation feature, already computed with a sliding window.
 fis = addInput(fis, [0 1], 'Name', 'local_std');

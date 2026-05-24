@@ -26,14 +26,14 @@ def minmax_normalize(x):
 def prepare_slice_features(data, slice_idx):
     flair = data["flair"][:, :, slice_idx]
 
-    # Pixel intensity feature: normalized original FLAIR intensity.
-    intensity = minmax_normalize(flair)
-
     # Precomputed sliding-window features loaded from the provided .npy files.
     local_mean = minmax_normalize(data["mean"][:, :, slice_idx])
     local_std = minmax_normalize(data["std"][:, :, slice_idx])
     skew = minmax_normalize(data["skew"][:, :, slice_idx])
     kurtosis = minmax_normalize(data["kurtosis"][:, :, slice_idx])
+
+    # Pixel intensity feature: normalized original FLAIR intensity.
+    intensity = minmax_normalize(flair)
 
     # Local contrast feature: how much brighter/darker the pixel is than its local mean.
     contrast = minmax_normalize(flair - data["mean"][:, :, slice_idx])
@@ -43,11 +43,12 @@ def prepare_slice_features(data, slice_idx):
     local_range = minmax_normalize(local_range_raw)
 
     return {
-        "intensity": intensity,
+        
         "mean": local_mean,
         "std": local_std,
         "skew": skew,
         "kurtosis": kurtosis,
+        "intensity": intensity,
         "contrast": contrast,
         "range": local_range,
     }
