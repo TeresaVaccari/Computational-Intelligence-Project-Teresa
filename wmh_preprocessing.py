@@ -42,6 +42,12 @@ def prepare_slice_features(data, slice_idx):
     local_range_raw = maximum_filter(flair, size=5) - minimum_filter(flair, size=5)
     local_range = minmax_normalize(local_range_raw)
 
+    # Feature spaziali: coordinate x,y normalizzate in [0, 1]
+    H, W = flair.shape
+    rows = np.repeat(np.arange(H)[:, None], W, axis=1) / H  # coordinata y
+    cols = np.repeat(np.arange(W)[None, :], H, axis=0) / W  # coordinata x
+
+
     return {
         
         "mean": local_mean,
@@ -51,4 +57,6 @@ def prepare_slice_features(data, slice_idx):
         "intensity": intensity,
         "contrast": contrast,
         "range": local_range,
+        "x": cols,  
+        "y": rows,   
     }

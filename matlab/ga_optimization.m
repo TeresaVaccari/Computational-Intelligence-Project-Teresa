@@ -1,93 +1,96 @@
-%% WMH rule-weight optimization using MATLAB ga
-
-clc
-close all
-clear all
+clear variables;
+close all;
+clc;
 
 rng(42)
+warningState = warning;
+cleanupWarning = onCleanup(@() warning(warningState));
 warning('off', 'all')
 
 scriptDir = fileparts(mfilename('fullpath'));
 projectRoot = fileparts(scriptDir);
 addpath(scriptDir)
 
-threshold = 0.65;
-populationSize = 10;
-generations = 5;
+data = load(fullfile(projectRoot, ...
+    'matlab_preprocessed_features', 'preprocessed_features_slice_31.mat'));
 
-fis_base = fis_rules();
+featureMatrix = data.feature_matrix;
+gold_standard = data.manual_mask > 0;
+gold_vector = data.manual_mask_vector > 0;
 
-featureDir = fullfile(projectRoot, 'matlab_preprocessed_features');
-files = dir(fullfile(featureDir, 'preprocessed_features_slice_*.mat'));
+%% Fill parameter struct
+param.intensity = featureMatrix(:, 1);
+param.mean = featureMatrix(:, 2);
+param.std = featureMatrix(:, 3);
+param.skew = featureMatrix(:, 4);
+param.kurtosis = featureMatrix(:, 5);
+param.contrast = featureMatrix(:, 6);
+param.range = featureMatrix(:, 7);
+param.x = featureMatrix(:, 8);
+param.y = featureMatrix(:, 9);
+param.gold = gold_vector(:);
+param.threshold = 0.5;
+param.thresholds = 0:0.01:1;
 
-featureMatrices = cell(1, numel(files));
-manualMasks = cell(1, numel(files));
-imageShapes = cell(1, numel(files));
-flairSlices = cell(1, numel(files));
+lesion_idx = find(param.gold == 1);
+healthy_idx = find(param.gold == 0);
+healthy_idx = healthy_idx(randperm(numel(healthy_idx), 4 * numel(lesion_idx)));
+param.pixel_idx = [lesion_idx; healthy_idx];
 
-for i = 1:numel(files)
-    loaded = load(fullfile(files(i).folder, files(i).name));
-    featureMatrices{i} = loaded.featureMatrix;
-    manualMasks{i} = loaded.manualMask > 0;
-    imageShapes{i} = double(loaded.imageShape);
-    flairSlices{i} = loaded.flairSlice;
-end
-
-param.featureMatrices = featureMatrices;
-param.manualMasks = manualMasks;
-
+%% GA
+fis_base = fis_rules(false);
 numberOfVariables = length(fis_base.Rules);
+
 FitnessFunction = @(chromosome)ObjFunGA_WMH(chromosome, fis_base, param);
 
-lowerBounds = zeros(1, numberOfVariables);
-upperBounds = ones(1, numberOfVariables);
-
-opts.PopulationSize = populationSize;
-opts.Generations = generations;
+opts.InitialPopulationRange = [zeros(1, numberOfVariables); ones(1, numberOfVariables)];
+opts.SelectionFcn = @selectionroulette;
+opts.PopulationSize = 20;
+opts.Generations = 10;
 opts.CrossoverFraction = 0.8;
 opts.MutationFcn = @mutationadaptfeasible;
-opts.EliteCount = max(2, floor(populationSize / 5));
+opts.EliteCount = 1;
+opts.Display = 'iter';
 
-[x, fval, exitflag, output, final_pop, scores] = ga(FitnessFunction, numberOfVariables, [], [], [], [], lowerBounds, upperBounds, [], opts);
+[x, fval, exitflag, output, final_pop, scores] = ga( ...
+    FitnessFunction, numberOfVariables, [], [], [], [], ...
+    zeros(1, numberOfVariables), ones(1, numberOfVariables), [], opts);
 
-bestWeights = x;
-bestThreshold = threshold;
-
-fprintf('\nBest rule weights:\n')
-for i = 1:numel(bestWeights)
-    fprintf('Rule %02d: %.3f\n', i, bestWeights(i))
-end
-fprintf('Best threshold: %.3f\n', bestThreshold)
-fprintf('Best error: %.4f\n', fval)
-
-fisWeighted = fis_base;
-for i = 1:numel(bestWeights)
-    fisWeighted.Rules(i).Weight = bestWeights(i);
+%% Result
+fprintf('\nBest fitness: %.4f\n', fval);
+fprintf('Rule weights:\n');
+for r = 1:numberOfVariables
+    fis_base.Rules(r).Weight = x(r);
+    fprintf('  Rule %02d: %.4f\n', r, x(r));
 end
 
-score = evalfis(fisWeighted, featureMatrices{1});
-scoreImage = reshape(score, imageShapes{1}(2), imageShapes{1}(1))';
-prediction = scoreImage >= bestThreshold;
+probabilities = evalfis(fis_base, featureMatrix);
+dice_scores = zeros(size(param.thresholds));
 
-figure('Name', 'GA optimized WMH segmentation')
+for t = 1:length(param.thresholds)
+    temp_prediction = probabilities >= param.thresholds(t);
+    denom = sum(temp_prediction(:)) + sum(param.gold(:));
 
-subplot(1, 4, 1)
-imagesc(flairSlices{1}')
-axis image off
-colormap gray
-title('FLAIR')
+    if denom == 0
+        dice_scores(t) = 1;
+    else
+        dice_scores(t) = 2 * sum(temp_prediction(:) & param.gold(:)) / denom;
+    end
+end
 
-subplot(1, 4, 2)
-imagesc(manualMasks{1}')
-axis image off
-title('Manual mask')
+[dice_score, best_idx] = max(dice_scores);
+best_threshold = param.thresholds(best_idx);
+prediction = reshape(probabilities >= best_threshold, size(gold_standard, 2), size(gold_standard, 1))';
 
-subplot(1, 4, 3)
-imagesc(scoreImage')
-axis image off
-title('FIS score')
+fprintf('Training Dice from GA: %.4f\n', 1 - fval);
+fprintf('Best threshold: %.2f\n', best_threshold);
+fprintf('Dice score: %.4f\n', dice_score);
 
-subplot(1, 4, 4)
-imagesc(prediction')
-axis image off
-title('Prediction')
+figure;
+subplot(1, 3, 1), imagesc(data.intensity_map'), axis image off, colormap gray, title('FLAIR')
+subplot(1, 3, 2), imagesc(gold_standard'), axis image off, title('Manual mask')
+subplot(1, 3, 3), imagesc(prediction'), axis image off, title('Predicted mask')
+
+save(fullfile(projectRoot, 'matlab_ga_output', 'ga_optimized_rule_weights.mat'), ...
+    'x', 'fval', 'best_threshold', 'dice_score', 'exitflag', 'output', ...
+    'final_pop', 'scores')
