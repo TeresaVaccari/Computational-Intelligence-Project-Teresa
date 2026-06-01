@@ -1,20 +1,20 @@
-% funzione ObjFunGA_WMH
-% assegna weights del cromosoma al fuzzy inference system
+% ObjFunGA_WMH function
+% assign weights of chromosome to fuzzy inference system
 
 function [ f ] = ObjFunGA_WMH(chromosome, fis_base, param)
-% chromosome è il vettore con i pesi dlle regole fuzzy
-% fis_base è il fis creato con fis_rules.m
-% param è structure con features 
+% chromosome is vector with fuzzy rules weights
+% fis_base is the fuzzy inference system 
+% param is the structure with features 
 
-% The chromosome contains one weight for each fuzzy rule.
+% chromosome contains one weight for each fuzzy rule.
 for r = 1:length(chromosome)
     fis_base.Rules(r).Weight = chromosome(r);
 end
 
-% crea matrice di input per i pixel di training
+% create input matrix for train pixel
 idx = param.pixel_idx;
 
-input_pixels = [ % ogni row è un pixel, ogni colonna una feature
+input_pixels = [ % each row is a pixel, each column is a feature
     param.intensity(idx), ...
     param.mean(idx), ...
     param.std(idx), ...
@@ -26,12 +26,12 @@ input_pixels = [ % ogni row è un pixel, ogni colonna una feature
     param.y(idx)
 ];
 
-% valuta il fis
-probabilities = evalfis(fis_base, input_pixels);
+% evaluate fis
+fis_scores = evalfis(fis_base, input_pixels);
 dice_scores = zeros(size(param.thresholds));
 
 for t = 1:length(param.thresholds)
-    prediction = probabilities >= param.thresholds(t);
+    prediction = fis_scores >= param.thresholds(t);
     denom = sum(prediction(:)) + sum(param.gold(idx));
 
     if denom == 0
@@ -41,7 +41,7 @@ for t = 1:length(param.thresholds)
     end
 end
 
-% il GA minimizza, quindi minimizziamo 1 - Dice
+% GA minimize error, hence maximize dice
 f = 1 - max(dice_scores);
 
 end

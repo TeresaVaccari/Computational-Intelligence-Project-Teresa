@@ -13,36 +13,40 @@ def load_dataset(data_dir):
         "kurtosis": np.nan_to_num(np.load(data_dir / "kurtosis_dataset.npy"), nan=-5.0),
     }
 
-
+# use MinMaxScaler to normalize features to [0, 1]
 def minmax_normalize(x):
-    # MinMaxScaler maps values into the [0, 1] interval.
-    original_shape = x.shape
+    original_shape = x.shape # shape originale (151, 186, 611)
     scaler = MinMaxScaler(feature_range=(0, 1))
     x_flat = x.reshape(-1, 1)
     x_norm = scaler.fit_transform(x_flat)
     return x_norm.reshape(original_shape)
 
-
+# prepare normalized pixel features for one 2D slice.
 def prepare_slice_features(data, slice_idx):
+    # each returned feature is a 2D array with the same shape as the selected slice
     flair = data["flair"][:, :, slice_idx]
 
-    # Precomputed sliding-window features loaded from the provided .npy files.
-    local_mean = minmax_normalize(data["mean"][:, :, slice_idx])
-    local_std = minmax_normalize(data["std"][:, :, slice_idx])
+    # local mean: mean FLAIR intensity in a local neighborhood around each
+    mean = minmax_normalize(data["mean"][:, :, slice_idx])
+
+    # local standard deviation: variability of intensities in the local neighborhood 
+    std = minmax_normalize(data["std"][:, :, slice_idx])
+
     skew = minmax_normalize(data["skew"][:, :, slice_idx])
+
     kurtosis = minmax_normalize(data["kurtosis"][:, :, slice_idx])
 
-    # Pixel intensity feature: normalized original FLAIR intensity.
+    # pixel intensity: original FLAIR value of each pixel, normalized to [0, 1]
     intensity = minmax_normalize(flair)
 
-    # Local contrast feature: how much brighter/darker the pixel is than its local mean.
+    # local contrast: difference between the pixel intensity and its local mean
     contrast = minmax_normalize(flair - data["mean"][:, :, slice_idx])
 
-    # Local range feature: max(window) - min(window) using a 5x5 sliding window.
-    local_range_raw = maximum_filter(flair, size=5) - minimum_filter(flair, size=5)
-    local_range = minmax_normalize(local_range_raw)
+    # local range: maximum - minimum intensity in a 5x5 window around each pixel
+    range_raw = maximum_filter(flair, size=5) - minimum_filter(flair, size=5)
+    range = minmax_normalize(range_raw)
 
-    # Feature spaziali: coordinate x,y normalizzate in [0, 1]
+    # spatial features: normalized pixel coordinates
     H, W = flair.shape
     rows = np.repeat(np.arange(H)[:, None], W, axis=1) / H  # coordinata y
     cols = np.repeat(np.arange(W)[None, :], H, axis=0) / W  # coordinata x
@@ -50,13 +54,13 @@ def prepare_slice_features(data, slice_idx):
 
     return {
         
-        "mean": local_mean,
-        "std": local_std,
+        "mean": mean,
+        "std": std,
         "skew": skew,
         "kurtosis": kurtosis,
         "intensity": intensity,
         "contrast": contrast,
-        "range": local_range,
+        "range": range,
         "x": cols,  
         "y": rows,   
     }

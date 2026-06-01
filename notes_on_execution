@@ -1,0 +1,120 @@
+Repository description
+
+The repository contains two segmentation pipelines: a MATLAB fuzzy inference system optimized with a genetic algorithm, and a neural network trained on the same pixel-level features.
+
+Structure
+
+- data/: input NumPy datasets, including FLAIR images, WMH masks, diagnosis labels, and precomputed statistical features.
+- matlab/: MATLAB scripts for the fuzzy inference system and genetic algorithm optimization.
+- nn_output/: saved neural-network model, metrics, learning curves, and confusion matrices.
+- figures/: preprocessing visualizations, such as FLAIR-mask overlay and feature maps.
+- wmh_preprocessing.py: shared Python preprocessing functions.
+- select_slice.py: selects the slice with the highest number of WMH pixels.
+- visualize_preprocessed_features.py: creates visualization figures for the selected slice.
+- export_preprocessed_features_for_matlab.py: exports one preprocessed slice to MATLAB format.
+- train_wmh_nn.ipynb: neural-network training and evaluation notebook.
+
+
+
+
+The dependencies are listed in requirements.txt:
+- numpy
+- matplotlib
+- scipy
+- scikit-learn
+- pandas
+
+
+------------------------------------------------------------------------------
+
+Genetic Algorithm Optimization
+
+1. Run select_slice.py to identify the slice with the largest WMH mask area.
+2. Run export_preprocessed_features_for_matlab.py to export the selected slice to:
+   matlab/preprocessed_features_slice_*.mat
+   The currently selected slice is 31. To change the exported slice, edit SLICE_IDX in export_preprocessed_features_for_matlab.py.
+3. In MATLAB, open the project folder, then run: matlab/ga_optimization.m
+4. MATLAB loads the exported .mat file, builds the fuzzy inference system from fis_rules.m, optimizes rule weights using ObjFunGA_WMH.m, computes the Dice score, displays the segmentation result, and saves:
+   matlab/ga_optimized_rule_weights.mat
+
+
+
+Export for MATLAB
+The file export_preprocessed_features_for_matlab.py exports the selected slice
+to a MATLAB .mat file. It creates:
+- feature_matrix: one row per pixel and one column per feature.
+- feature_names: names of the exported features.
+- manual_mask: gold-standard mask as a 2D image.
+- manual_mask_vector: gold-standard mask reshaped as a vector.
+- intensity_map: normalized FLAIR image for visualization.
+
+To run the export:
+    .venv/bin/python export_preprocessed_features_for_matlab.py
+
+The output file is saved in:
+    matlab/preprocessed_features_slice_31.mat
+
+
+
+Fuzzy inference system
+The MATLAB folder contains the fuzzy inference system and the genetic
+algorithm optimization:
+
+- fis_rules.m defines the Mamdani fuzzy inference system, its membership
+  functions, and the initial rule list.
+- ObjFunGA_WMH.m computes the objective function used by the genetic algorithm.
+- ga_optimization.m loads the exported .mat file, evaluates the fuzzy system,
+  optimizes the rule weights, prints the results, and displays the final
+  segmentation comparison.
+
+
+Latest MATLAB GA result
+
+The genetic algorithm was run on slice 31 using 14 fuzzy-rule weights as optimization variables.
+
+GA settings:
+- Population size: 20
+- Generations: 10
+- Selection function: roulette selection
+- Crossover function: scattered crossover
+- Mutation function: adaptive feasible mutation
+- Objective function: minimize 1 - Dice
+
+Results:
+- Best fitness: 0.0300
+- Training Dice from GA: 0.9700
+- Best threshold: 0.79
+- Final Dice score on the full slice: 0.8531
+
+
+
+------------------------------------------------------------------------------
+
+Neural network
+
+The notebook train_wmh_nn.ipynb trains a pixel-wise neural network classifier.
+
+Workflow:
+1. Load the same datasets using wmh_preprocessing.py.
+2. Build a DataFrame where each row is one pixel and each column is one feature.
+3. Split the data by slice into train, validation, and test sets.
+4. Balance the training set by keeping all WMH pixels and sampling non-WMH pixels.
+5. Train an MLPClassifier using the nine extracted features.
+6. Select the best probability threshold on the validation set by maximizing Dice score.
+7. Evaluate train, validation, and test performance.
+8. Save outputs in nn_output/.
+
+The neural network outputs:
+- best_model.pkl
+- learning_curves.png
+- dice_vs_threshold.png
+- confusion_matrix_train.png
+- confusion_matrix_validation.png
+- confusion_matrix_test.png
+- metrics.csv
+
+Latest neural-network run:
+- best validation threshold: 0.98
+- train Dice: 0.7040
+- validation Dice: 0.7210
+- test Dice: 0.6815
